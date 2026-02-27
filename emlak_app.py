@@ -57,27 +57,7 @@ if st.session_state.kayitlar:
 
 tab1, tab2 = st.tabs(["🗂️ Portföy & İşlem", "📄 Kurumsal Sözleşme Üret"])
 
-with tab1:
-    col_form, col_list = st.columns([1, 2])
-    with col_form:
-        st.subheader("Yeni İşlem Kaydı")
-        m_ad = st.text_input("Müşteri Ad Soyad:")
-        m_islem = st.selectbox("İşlem Tipi:", ["Konut Satışı", "Kiralama", "Arsa Satışı"])
-        m_tutar = st.number_input("İşlem Tutarı (TL):", value=1000000, step=50000)
-        if st.button("Sisteme İşle"):
-            yeni = {
-                "Tarih": datetime.now().strftime("%d-%m-%Y"),
-                "Müşteri": m_ad, "İşlem": m_islem, "Tutar": f"{m_tutar:,.2f} TL"
-            }
-            st.session_state.kayitlar.append(yeni)
-            with open(DB_FILE, "w", encoding="utf-8") as f: json.dump(st.session_state.kayitlar, f)
-            st.success("Kayıt başarıyla eklendi!")
-            st.rerun()
 
-    with col_list:
-        st.subheader("Mevcut Kayıtlar")
-        if st.session_state.kayitlar:
-            st.dataframe(pd.DataFrame(st.session_state.kayitlar), use_container_width=True)
 
 with tab2:
     st.subheader("📜 Sözleşme Hazırlama Merkezi")
@@ -87,7 +67,51 @@ with tab2:
                              range(len(st.session_state.kayitlar)),
                              format_func=lambda x: f"{st.session_state.kayitlar[x]['Müşteri']} - {st.session_state.kayitlar[x]['Tarih']}")
         
-        m = st.session_state.kayitlar[secim]
+        mwith tab1:
+    col_form, col_list = st.columns([1, 2])
+    with col_form:
+        st.subheader("Yeni İşlem Kaydı")
+        m_ad = st.text_input("Müşteri Ad Soyad:")
+        m_islem = st.selectbox("İşlem Tipi:", ["Konut Satışı", "Kiralama", "Arsa Satışı"])
+        m_tutar = st.number_input("İşlem Tutarı (TL):", value=1000000, step=50000)
+        
+        if st.button("Sisteme İşle"):
+            # Rakamları net hesaplayıp kaydediyoruz (None hatasını önler)
+            hizmet_bedeli_hesap = m_tutar * 0.02
+            yeni = {
+                "Tarih": datetime.now().strftime("%d-%m-%Y"),
+                "Müşteri": m_ad, 
+                "İşlem": m_islem, 
+                "Tutar": f"{m_tutar:,.2f} TL",
+                "Hizmet Bedeli": f"{hizmet_bedeli_hesap:,.2f} TL"
+            }
+            st.session_state.kayitlar.append(yeni)
+            # Veritabanına fiziksel kayıt
+            with open(DB_FILE, "w", encoding="utf-8") as f: 
+                json.dump(st.session_state.kayitlar, f, ensure_ascii=False, indent=4)
+            st.success("Kayıt başarıyla eklendi!")
+            st.rerun()
+
+    with col_list:
+        st.subheader("Mevcut Kayıtlar")
+        if st.session_state.kayitlar:
+            df = pd.DataFrame(st.session_state.kayitlar)
+            st.dataframe(df, use_container_width=True)
+            
+            st.divider()
+            # ÇALIŞAN SİLME SİSTEMİ
+            st.write("🗑️ **Kayıt Silme Paneli**")
+            silme_listesi = [f"{i}: {k['Müşteri']} ({k['Tarih']})" for i, k in enumerate(st.session_state.kayitlar)]
+            secilen_silme = st.selectbox("Silinecek kaydı seçin:", options=range(len(silme_listesi)), format_func=lambda x: silme_listesi[x])
+            
+            if st.button("Seçili Kaydı Tamamen Sil"):
+                # Listeden çıkar
+                silinen = st.session_state.kayitlar.pop(secilen_silme)
+                # Dosyayı güncelle
+                with open(DB_FILE, "w", encoding="utf-8") as f: 
+                    json.dump(st.session_state.kayitlar, f, ensure_ascii=False, indent=4)
+                st.warning(f"❌ {silinen['Müşteri']} kaydı silindi.")
+                st.rerun()
         
         def pro_pdf(data):
             pdf = FPDF()
