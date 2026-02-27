@@ -6,9 +6,9 @@ import os
 from fpdf import FPDF
 
 # Sayfa Ayarları
-st.set_page_config(page_title="Emlak Pro Asistan", page_icon="🏢", layout="wide")
+st.set_page_config(page_title="Emlak CRM Pro", page_icon="🏛️", layout="wide")
 
-# --- KULLANICI & ŞİFRE YÖNETİMİ ---
+# --- DOSYA YÖNETİMİ ---
 USERS_FILE = "kullanicilar.json"
 
 def kullanicilari_yukle():
@@ -23,46 +23,33 @@ def kullanici_kaydet(username, password):
     with open(USERS_FILE, "w", encoding="utf-8") as f:
         json.dump(kullanicilar, f, ensure_ascii=False, indent=4)
 
-# Uygulama başladığında kullanıcıyı kontrol et
+# --- GİRİŞ SİSTEMİ ---
 if 'user' not in st.session_state:
     st.session_state.user = None
 
 if st.session_state.user is None:
-    st.title("🔐 Emlak Paneli Girişi")
-    
-    tab_giris, tab_kayit = st.tabs(["Giriş Yap", "Yeni Hesap Oluştur"])
-    
-    with tab_giris:
-        k_adi = st.text_input("Kullanıcı Adı:", key="login_user").lower().strip()
-        sifre = st.text_input("Şifre:", type="password", key="login_pass")
-        
-        if st.button("Sisteme Gir"):
-            mevcut_kullanicilar = kullanicilari_yukle()
-            if k_adi in mevcut_kullanicilar and mevcut_kullanicilar[k_adi] == sifre:
-                st.session_state.user = k_adi
+    st.title("🔐 Emlak CRM Pro Girişi")
+    t1, t2 = st.tabs(["Giriş Yap", "Hesap Oluştur"])
+    with t1:
+        u = st.text_input("Kullanıcı Adı:", key="l_u").lower().strip()
+        p = st.text_input("Şifre:", type="password", key="l_p")
+        if st.button("Giriş"):
+            m = kullanicilari_yukle()
+            if u in m and m[u] == p:
+                st.session_state.user = u
                 st.rerun()
-            else:
-                st.error("❌ Kullanıcı adı veya şifre hatalı!")
-
-    with tab_kayit:
-        yeni_k_adi = st.text_input("Yeni Kullanıcı Adı:", key="reg_user").lower().strip()
-        yeni_sifre = st.text_input("Yeni Şifre Belirleyin:", type="password", key="reg_pass")
-        
-        if st.button("Kayıt Ol ve Kullanıcı Oluştur"):
-            if yeni_k_adi and yeni_sifre:
-                mevcutlar = kullanicilari_yukle()
-                if yeni_k_adi in mevcutlar:
-                    st.warning("⚠️ Bu kullanıcı adı zaten alınmış!")
-                else:
-                    kullanici_kaydet(yeni_k_adi, yeni_sifre)
-                    st.success("✅ Hesabınız oluşturuldu! Şimdi 'Giriş Yap' sekmesinden girebilirsiniz.")
-            else:
-                st.warning("Lütfen tüm alanları doldurun.")
+            else: st.error("Hatalı bilgiler!")
+    with t2:
+        nu = st.text_input("Yeni K. Adı:", key="r_u").lower().strip()
+        np = st.text_input("Yeni Şifre:", type="password", key="r_p")
+        if st.button("Kayıt Ol"):
+            if nu and np:
+                kullanici_kaydet(nu, np)
+                st.success("Kayıt başarılı, giriş yapabilirsiniz.")
     st.stop()
 
-# Giriş yapıldıktan sonraki veritabanı dosyası
+# --- VERİ YÜKLEME ---
 DB_FILE = f"db_{st.session_state.user}.json"
-# ... (Kodun geri kalanı - verileri_yukle, verileri_kaydet vb. aynı kalacak)
 
 def verileri_yukle():
     if os.path.exists(DB_FILE):
@@ -77,94 +64,98 @@ def verileri_kaydet(veriler):
 if 'kayitlar' not in st.session_state:
     st.session_state.kayitlar = verileri_yukle()
 
-# --- ANA PANEL ---
-st.title(f"🏢 Emlak Yönetim Paneli - Hoş geldin, {st.session_state.user.capitalize()}")
+# --- PROFESYONEL DASHBOARD (İSTATİSTİK) ---
+st.title(f"🏛️ Emlak Yönetim Paneli - {st.session_state.user.upper()}")
 
-with st.sidebar:
-    st.header("📋 İşlem Formu")
-    isim = st.text_input("Müşteri Ad Soyad:")
-    islem_tipi = st.selectbox("İşlem Türü:", ["Konut Satışı", "Ticari Satış", "Kiralama"])
-    tutar = st.number_input("İşlem Bedeli (TL):", min_value=0, value=2000000)
-    st.divider()
-    hesapla_ve_ekle = st.button("Sisteme Kaydet ve Hesapla")
-    
-    if st.button("🚪 Çıkış Yap"):
-        st.session_state.user = None
-        st.session_state.kayitlar = []
-        st.rerun()
+# İstatistikler
+if st.session_state.kayitlar:
+    df_stat = pd.DataFrame(st.session_state.kayitlar)
+    df_stat['Sayısal Tutar'] = df_stat['Tutar'].str.replace(' TL', '').str.replace(',', '').astype(float)
+    col1, col2, col3 = st.columns(3)
+    col1.metric("Toplam İşlem", len(df_stat))
+    col2.metric("Toplam Ciro", f"{df_stat['Sayısal Tutar'].sum():,.2f} TL")
+    col3.metric("Tahmini Komisyon", f"{df_stat['Sayısal Tutar'].sum()*0.02:,.2f} TL")
 
-if hesapla_ve_ekle and isim:
-    hizmet_bedeli = tutar * 0.02
-    kdv = hizmet_bedeli * 0.20
-    toplam = hizmet_bedeli + kdv
-    tarih = datetime.now().strftime("%d-%m-%Y %H:%M")
+# --- SEKMELER ---
+tab1, tab2, tab3 = st.tabs(["📊 İşlem Yönetimi", "📜 Profesyonel Sözleşme", "⚙️ Ayarlar"])
 
-    yeni_kayit = {
-        "Tarih": tarih, "Müşteri": isim, "İşlem": islem_tipi,
-        "Tutar": f"{tutar:,.2f} TL", "Hizmet Bedeli": f"{hizmet_bedeli:,.2f} TL", "KDV Dahil": f"{toplam:,.2f} TL"
-    }
-    st.session_state.kayitlar.append(yeni_kayit)
-    verileri_kaydet(st.session_state.kayitlar)
-    st.success(f"✅ {isim} kaydedildi.")
-
-tab1, tab2 = st.tabs(["📊 İşlem Takibi", "📜 Sözleşme Hazırlama"])
 with tab1:
-    if st.session_state.kayitlar:
-        df = pd.DataFrame(st.session_state.kayitlar)
-        st.dataframe(df, use_container_width=True)
-        
-        # --- SİLME BÖLÜMÜ ---
-        st.divider()
-        st.subheader("🗑️ Kayıt Yönetimi")
-        
-        # Silinecek kaydı seçmek için bir liste oluşturuyoruz
-        silinecek_index = st.selectbox(
-            "Silmek istediğiniz kaydı seçin (Sıra No):", 
-            range(len(st.session_state.kayitlar)),
-            format_func=lambda x: f"{x}: {st.session_state.kayitlar[x]['Müşteri']} - {st.session_state.kayitlar[x]['Tarih']}"
-        )
-        
-        if st.button("Seçili Kaydı Kalıcı Olarak Sil"):
-            # Listeden çıkar
-            silinen_isim = st.session_state.kayitlar[silinecek_index]['Müşteri']
-            st.session_state.kayitlar.pop(silinecek_index)
-            
-            # Güncel halini kullanıcının kendi dosyasına (db_user.json) kaydet
+    col_f, col_l = st.columns([1, 2])
+    with col_f:
+        st.subheader("Yeni Kayıt")
+        m_isim = st.text_input("Müşteri Ad Soyad:")
+        m_islem = st.selectbox("İşlem:", ["Konut Satışı", "Kiralama", "Arsa/Arazi"])
+        m_tutar = st.number_input("Bedel (TL):", min_value=0, value=1000000)
+        if st.button("Kaydet"):
+            yeni = {
+                "id": len(st.session_state.kayitlar) + 1,
+                "Tarih": datetime.now().strftime("%d-%m-%Y"),
+                "Müşteri": m_isim, "İşlem": m_islem, "Tutar": f"{m_tutar:,.2f} TL"
+            }
+            st.session_state.kayitlar.append(yeni)
             verileri_kaydet(st.session_state.kayitlar)
-            
-            st.success(f"❌ {silinen_isim} kişisine ait kayıt başarıyla silindi.")
-            st.rerun() # Sayfayı yenileyerek tabloyu güncelle
-    else:
-        st.info("Henüz bir kaydınız bulunmuyor.")
+            st.rerun()
 
+    with col_l:
+        st.subheader("Kayıtlı Portföy")
+        if st.session_state.kayitlar:
+            df = pd.DataFrame(st.session_state.kayitlar)
+            st.dataframe(df, use_container_width=True)
+            silinecek = st.selectbox("Silmek için seçin:", range(len(st.session_state.kayitlar)), format_func=lambda x: st.session_state.kayitlar[x]['Müşteri'])
+            if st.button("Seçili Kaydı Sil"):
+                st.session_state.kayitlar.pop(silinecek)
+                verileri_kaydet(st.session_state.kayitlar)
+                st.rerun()
 
 with tab2:
-    if isim:
-        tarih_str = datetime.now().strftime("%d/%m/%Y")
+    st.subheader("📜 Sözleşme Oluşturucu")
+    if st.session_state.kayitlar:
+        # BURASI KRİTİK: Eski müşteriyi seçme özelliği
+        secilen_musteri_idx = st.selectbox("Sözleşme yapılacak müşteriyi seçin:", 
+                                            range(len(st.session_state.kayitlar)),
+                                            format_func=lambda x: f"{st.session_state.kayitlar[x]['Müşteri']} ({st.session_state.kayitlar[x]['Tarih']})")
         
-        def pdf_olustur():
+        m_data = st.session_state.kayitlar[secilen_musteri_idx]
+
+        def pro_pdf_olustur(data):
             pdf = FPDF()
-            # Senin sistemindeki font isimleriyle eşleştirdik:
             pdf.add_font("Roboto", style="", fname="Roboto_Condensed-Light.ttf")
             pdf.add_font("Roboto", style="B", fname="Roboto_Condensed-Bold.ttf")
             pdf.add_page()
             
+            # Başlık
             pdf.set_font("Roboto", "B", 16)
-            pdf.cell(0, 10, "TAŞINMAZ GÖSTERME VE YETKİ BELGESİ", align='C', new_x="LMARGIN", new_y="NEXT")
-            pdf.ln(10)
+            pdf.cell(0, 10, "TAŞINMAZ GÖSTERME VE YETKİ BELGESİ", align='C', ln=True)
+            pdf.ln(5)
             
-            pdf.set_font("Roboto", "", 12)
-            pdf.cell(0, 10, f"TARİH: {tarih_str}", new_x="LMARGIN", new_y="NEXT")
-            pdf.cell(0, 10, f"MÜŞTERİ: {isim.upper()}", new_x="LMARGIN", new_y="NEXT")
-            pdf.cell(0, 10, f"DANIŞMAN: {st.session_state.user.upper()}", new_x="LMARGIN", new_y="NEXT")
-            pdf.ln(10)
+            # Profesyonel Maddeler
+            pdf.set_font("Roboto", "", 10)
+            pdf.multi_cell(0, 7, f"İşbu belge, {data['Müşteri']} (Bundan böyle 'MÜŞTERİ' olarak anılacaktır) ile {st.session_state.user.upper()} (Bundan böyle 'DANIŞMAN' olarak anılacaktır) arasında {data['Tarih']} tarihinde düzenlenmiştir.")
+            pdf.ln(3)
             
-            metin = "Bu belge taşınmaz ticareti yönetmeliği uyarınca düzenlenmiştir..."
-            pdf.multi_cell(0, 10, metin)
+            pdf.set_font("Roboto", "B", 11)
+            pdf.cell(0, 10, "1. SÖZLEŞME KONUSU VE HİZMET BEDELİ", ln=True)
+            pdf.set_font("Roboto", "", 10)
+            pdf.multi_cell(0, 7, f"Danışman, Müşteri'ye söz konusu taşınmazı göstermeyi; Müşteri ise bu taşınmazı satın alması/kiralaması durumunda taşınmaz bedeli olan {data['Tutar']} üzerinden %2 + KDV oranında hizmet bedeli ödemeyi kabul eder.")
+            
+            pdf.set_font("Roboto", "B", 11)
+            pdf.cell(0, 10, "2. CEZAİ ŞART", ln=True)
+            pdf.set_font("Roboto", "", 10)
+            pdf.multi_cell(0, 7, "Müşteri, kendisine gösterilen taşınmazı Danışman'ı devre dışı bırakarak mal sahibinden doğrudan satın alması durumunda, hizmet bedelinin iki katı tutarında cezai şart ödemeyi taahhüt eder.")
+            
+            pdf.ln(20)
+            pdf.cell(90, 10, "MÜŞTERİ İMZA", align='L')
+            pdf.cell(0, 10, "DANIŞMAN İMZA", align='R')
+            
             return pdf.output()
 
-        try:
-            pdf_out = pdf_olustur()
-            st.download_button("📄 PDF İndir", data=bytes(pdf_out), file_name=f"sozlesme_{isim}.pdf")
-        except Exception as e:
-            st.error(f"Hata: {e}")
+        if st.button("📄 Profesyonel PDF Üret"):
+            pdf_raw = pro_pdf_olustur(m_data)
+            st.download_button("📥 PDF Dosyasını İndir", data=bytes(pdf_raw), file_name=f"sozlesme_{m_data['Müşteri']}.pdf")
+    else:
+        st.info("Sözleşme oluşturmak için önce 'İşlem Yönetimi' kısmından bir kayıt eklemelisiniz.")
+
+with tab3:
+    if st.button("🚪 Güvenli Çıkış"):
+        st.session_state.user = None
+        st.rerun()
