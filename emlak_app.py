@@ -101,11 +101,9 @@ with tab2:
             pdf_data = pdf_olustur()
             st.download_button(
                 label="📄 Profesyonel Türkçe PDF İndir",
-                data=bytes(pdf_data),
+                data=pdf_data, # bytes() sarmalına gerek olmayabilir, fpdf2 bunu halleder
                 file_name=f"sozlesme_{isim}.pdf",
                 mime="application/pdf"
             )
         except Exception as e:
-            st.error(f"Sistem güncelleniyor, lütfen 1 dakika sonra tekrar deneyin.")
-    else:
-        st.warning("⚠️ Sözleşme hazırlamak için isim girin.")
+            st.error(f"Hata detayı: {e}") # Buradaki hata mesajını görmek işimizi kolaylaştırır
