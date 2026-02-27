@@ -70,19 +70,18 @@ with tab2:
         def pdf_olustur():
             pdf = FPDF()
             
-            # Fontlar artık ana dizinde olduğu için yol en sade haliyle:
-            pdf.add_font("Roboto", style="", fname="Roboto-Regular.ttf")
-            pdf.add_font("Roboto", style="B", fname="Roboto-Bold.ttf")
+            # Senin listendeki dosya isimlerine göre tam eşleşme:
+            pdf.add_font("Roboto", style="", fname="Roboto_Condensed-Light.ttf")
+            pdf.add_font("Roboto", style="B", fname="Roboto_Condensed-Bold.ttf")
             
             pdf.add_page()
-            # ... geri kalan kod aynı kalacak
             
-            # Başlık (Roboto Bold kullanıyoruz)
+            # Başlık (Bold olanı kullanıyoruz)
             pdf.set_font("Roboto", "B", 16)
             pdf.cell(0, 10, "TAŞINMAZ GÖSTERME VE YETKİ BELGESİ", align='C', new_x="LMARGIN", new_y="NEXT")
             pdf.ln(10)
             
-            # İçerik (Roboto Regular kullanıyoruz)
+            # İçerik (Light olanı kullanıyoruz, çok şık durur)
             pdf.set_font("Roboto", "", 12)
             pdf.cell(0, 10, f"TARİH: {tarih_str}", new_x="LMARGIN", new_y="NEXT")
             pdf.cell(0, 10, f"MÜŞTERİ: {isim.upper()}", new_x="LMARGIN", new_y="NEXT")
@@ -90,12 +89,12 @@ with tab2:
             pdf.cell(0, 10, f"TAŞINMAZ BEDELİ: {tutar:,.2f} TL", new_x="LMARGIN", new_y="NEXT")
             pdf.ln(10)
             
-            sozlesme_metni = (
+            metin = (
                 "Yukarıda bilgileri yer alan taşınmazın gösterilmesi ve aracılık hizmetleri karşılığında, "
                 "Taşınmaz Ticareti Hakkında Yönetmelik gereğince; %2 + KDV oranında hizmet bedeli "
                 "ödenmesini taraflar kabul ve taahhüt eder."
             )
-            pdf.multi_cell(0, 10, sozlesme_metni)
+            pdf.multi_cell(0, 10, metin)
             pdf.ln(20)
             pdf.cell(90, 10, "MÜŞTERİ İMZA", align='L')
             pdf.cell(0, 10, "EMLAK DANIŞMANI İMZA", align='R')
