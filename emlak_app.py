@@ -15,6 +15,11 @@ def kullanicilari_yukle():
         with open(USERS_FILE, "r", encoding="utf-8") as f: return json.load(f)
     return {}
 
+def kullanici_kaydet(username, password):
+    db = kullanicilari_yukle()
+    db[username] = password
+    with open(USERS_FILE, "w", encoding="utf-8") as f: json.dump(db, f)
+
 # --- GİRİŞ SİSTEMİ ---
 if 'user' not in st.session_state: st.session_state.user = None
 
@@ -30,6 +35,13 @@ if st.session_state.user is None:
                 st.session_state.user = u
                 st.rerun()
             else: st.error("Hatalı giriş!")
+    with t2:
+        nu = st.text_input("Yeni K. Adı:").lower().strip()
+        np = st.text_input("Yeni Şifre:", type="password")
+        if st.button("Kayıt Ol"):
+            if nu and np:
+                kullanici_kaydet(nu, np)
+                st.success("Kayıt başarılı, giriş yapabilirsiniz.")
     st.stop()
 
 # --- VERİ TABANI ---
@@ -45,10 +57,8 @@ if 'kayitlar' not in st.session_state:
 # --- PROFESYONEL PANEL ---
 st.title(f"💼 Hoş geldin, {st.session_state.user.upper()}")
 
-# Üst İstatistik Paneli
 if st.session_state.kayitlar:
     df_stat = pd.DataFrame(st.session_state.kayitlar)
-    # Tutar sütununu sayıya çevir
     df_stat['Sayısal'] = df_stat['Tutar'].str.replace(' TL','').str.replace(',','').astype(float)
     c1, c2, c3 = st.columns(3)
     c1.metric("Toplam Portföy", len(df_stat))
@@ -57,104 +67,68 @@ if st.session_state.kayitlar:
 
 tab1, tab2 = st.tabs(["🗂️ Portföy & İşlem", "📄 Kurumsal Sözleşme Üret"])
 
-
-
-with tab2:
-    st.subheader("📜 Sözleşme Hazırlama Merkezi")
-    if st.session_state.kayitlar:
-        # ESKİ MÜŞTERİYİ SEÇME (İstediğin Özellik)
-        secim = st.selectbox("Sözleşme basılacak müşteriyi seçin:", 
-                             range(len(st.session_state.kayitlar)),
-                             format_func=lambda x: f"{st.session_state.kayitlar[x]['Müşteri']} - {st.session_state.kayitlar[x]['Tarih']}")
-        
-        with tab1:
+with tab1: # HATALI YER BURASIYDI, DÜZELTİLDİ
     col_form, col_list = st.columns([1, 2])
     with col_form:
         st.subheader("Yeni İşlem Kaydı")
         m_ad = st.text_input("Müşteri Ad Soyad:")
         m_islem = st.selectbox("İşlem Tipi:", ["Konut Satışı", "Kiralama", "Arsa Satışı"])
         m_tutar = st.number_input("İşlem Tutarı (TL):", value=1000000, step=50000)
-        
         if st.button("Sisteme İşle"):
-            # Rakamları net hesaplayıp kaydediyoruz (None hatasını önler)
             hizmet_bedeli_hesap = m_tutar * 0.02
             yeni = {
                 "Tarih": datetime.now().strftime("%d-%m-%Y"),
-                "Müşteri": m_ad, 
-                "İşlem": m_islem, 
+                "Müşteri": m_ad, "İşlem": m_islem, 
                 "Tutar": f"{m_tutar:,.2f} TL",
                 "Hizmet Bedeli": f"{hizmet_bedeli_hesap:,.2f} TL"
             }
             st.session_state.kayitlar.append(yeni)
-            # Veritabanına fiziksel kayıt
             with open(DB_FILE, "w", encoding="utf-8") as f: 
                 json.dump(st.session_state.kayitlar, f, ensure_ascii=False, indent=4)
-            st.success("Kayıt başarıyla eklendi!")
             st.rerun()
 
     with col_list:
         st.subheader("Mevcut Kayıtlar")
         if st.session_state.kayitlar:
-            df = pd.DataFrame(st.session_state.kayitlar)
-            st.dataframe(df, use_container_width=True)
-            
+            st.dataframe(pd.DataFrame(st.session_state.kayitlar), use_container_width=True)
             st.divider()
-            # ÇALIŞAN SİLME SİSTEMİ
             st.write("🗑️ **Kayıt Silme Paneli**")
-            silme_listesi = [f"{i}: {k['Müşteri']} ({k['Tarih']})" for i, k in enumerate(st.session_state.kayitlar)]
+            silme_listesi = [f"{i}: {k['Müşteri']}" for i, k in enumerate(st.session_state.kayitlar)]
             secilen_silme = st.selectbox("Silinecek kaydı seçin:", options=range(len(silme_listesi)), format_func=lambda x: silme_listesi[x])
-            
             if st.button("Seçili Kaydı Tamamen Sil"):
-                # Listeden çıkar
-                silinen = st.session_state.kayitlar.pop(secilen_silme)
-                # Dosyayı güncelle
+                st.session_state.kayitlar.pop(secilen_silme)
                 with open(DB_FILE, "w", encoding="utf-8") as f: 
                     json.dump(st.session_state.kayitlar, f, ensure_ascii=False, indent=4)
-                st.warning(f"❌ {silinen['Müşteri']} kaydı silindi.")
                 st.rerun()
+
+with tab2:
+    st.subheader("📜 Sözleşme Hazırlama Merkezi")
+    if st.session_state.kayitlar:
+        secim = st.selectbox("Müşteri seçin:", range(len(st.session_state.kayitlar)),
+                             format_func=lambda x: f"{st.session_state.kayitlar[x]['Müşteri']}")
+        m = st.session_state.kayitlar[secim]
         
         def pro_pdf(data):
             pdf = FPDF()
             pdf.add_font("Roboto", style="", fname="Roboto_Condensed-Light.ttf")
             pdf.add_font("Roboto", style="B", fname="Roboto_Condensed-Bold.ttf")
             pdf.add_page()
-            
-            # Üst Başlık & Çerçeve
-            pdf.set_draw_color(50, 50, 50)
-            pdf.rect(5, 5, 200, 287) # Sayfa çerçevesi
-            
+            pdf.rect(5, 5, 200, 287)
             pdf.set_font("Roboto", "B", 18)
             pdf.cell(0, 15, "TAŞINMAZ GÖSTERME VE YETKİ BELGESİ", align='C', ln=True)
-            pdf.set_font("Roboto", "", 9)
-            pdf.cell(0, 5, "Bu belge 6098 Sayılı Türk Borçlar Kanunu ve Taşınmaz Ticareti Yönetmeliği'ne uygundur.", align='C', ln=True)
+            pdf.set_font("Roboto", "", 11)
             pdf.ln(10)
-
-            # İçerik
-            pdf.set_font("Roboto", "B", 12)
-            pdf.cell(0, 10, "1. TARAFLAR VE KONU", ln=True)
-            pdf.set_font("Roboto", "", 11)
-            text = (f"İşbu sözleşme, bir tarafta emlak danışmanı {st.session_state.user.upper()} ile diğer tarafta "
-                    f"müşteri {data['Müşteri']} arasında, aşağıda belirtilen taşınmazın gösterilmesi ve "
-                    f"aracılık hizmetleri amacıyla {data['Tarih']} tarihinde imzalanmıştır.")
-            pdf.multi_cell(0, 7, text)
-            
-            pdf.ln(5)
-            pdf.set_font("Roboto", "B", 12)
-            pdf.cell(0, 10, "2. HİZMET BEDELİ VE ŞARTLAR", ln=True)
-            pdf.set_font("Roboto", "", 11)
-            madde = (f"- Danışman tarafından gösterilen taşınmazın bedeli {data['Tutar']} olarak beyan edilmiştir.\n"
-                     f"- Taşınmazın satışı durumunda müşteri %2 + KDV tutarında hizmet bedeli ödemeyi kabul eder.\n"
-                     f"- Gösterilen taşınmazın, danışman devre dışı bırakılarak doğrudan veya dolaylı yoldan satın alınması "
-                     f"durumunda müşteri, hizmet bedelinin 2 katı tutarında cezai şart ödemeyi taahhüt eder.")
-            pdf.multi_cell(0, 7, madde)
-
-            pdf.ln(30)
+            text = f"İşbu belge, danışman {st.session_state.user.upper()} ile müşteri {data['Müşteri']} arasında düzenlenmiştir."
+            pdf.multi_cell(0, 10, text)
+            pdf.ln(20)
             pdf.cell(90, 10, "MÜŞTERİ İMZA", align='L')
             pdf.cell(0, 10, "DANIŞMAN İMZA", align='R')
             return pdf.output()
 
         if st.button("🚀 Profesyonel Sözleşmeyi Oluştur"):
             raw_pdf = pro_pdf(m)
-            st.download_button("📥 Kurumsal PDF'i İndir", data=bytes(raw_pdf), file_name=f"Sözleşme_{m['Müşteri']}.pdf")
-    else:
-        st.info("Henüz kayıtlı müşteriniz yok.")
+            st.download_button("📥 İndir", data=bytes(raw_pdf), file_name=f"Sozlesme_{m['Müşteri']}.pdf")
+
+if st.sidebar.button("🚪 Çıkış Yap"):
+    st.session_state.user = None
+    st.rerun()
