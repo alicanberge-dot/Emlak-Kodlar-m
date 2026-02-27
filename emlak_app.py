@@ -1,13 +1,30 @@
 import streamlit as st
 import pandas as pd
 from datetime import datetime
+import json
+import os
 
 # Sayfa Ayarları
 st.set_page_config(page_title="Emlak Pro Asistan", page_icon="🏢", layout="wide")
 
-# Hafıza
+# VERİTABANI DOSYASI AYARI
+DB_FILE = "emlak_veritabani.json"
+
+# Verileri Dosyadan Yükleme Fonksiyonu
+def verileri_yukle():
+    if os.path.exists(DB_FILE):
+        with open(DB_FILE, "r", encoding="utf-8") as f:
+            return json.load(f)
+    return []
+
+# Verileri Dosyaya Kaydetme Fonksiyonu
+def verileri_kaydet(veriler):
+    with open(DB_FILE, "w", encoding="utf-8") as f:
+        json.dump(veriler, f, ensure_ascii=False, indent=4)
+
+# Uygulama Hafızasını Başlat
 if 'kayitlar' not in st.session_state:
-    st.session_state.kayitlar = []
+    st.session_state.kayitlar = verileri_yukle()
 
 st.title("🏢 Emlak Yönetim ve Sözleşme Paneli")
 
@@ -19,10 +36,15 @@ with st.sidebar:
     tutar = st.number_input("İşlem Bedeli (TL):", min_value=0, value=2000000)
     st.divider()
     hesapla_ve_ekle = st.button("Sisteme Kaydet ve Hesapla")
+    
+    # Veritabanını Temizleme Butonu (Dikkatli Kullanım İçin)
+    if st.button("🔴 Tüm Listeyi Sıfırla"):
+        st.session_state.kayitlar = []
+        verileri_kaydet([])
+        st.rerun()
 
 # Hesaplama Mantığı
-if hesapla_ve_ekle:
-    # Standart %2 + %20 KDV
+if hesapla_ve_ekle and isim:
     hizmet_bedeli = tutar * 0.02
     kdv = hizmet_bedeli * 0.20
     toplam = hizmet_bedeli + kdv
@@ -37,7 +59,8 @@ if hesapla_ve_ekle:
         "KDV Dahil": f"{toplam:,.2f} TL"
     }
     st.session_state.kayitlar.append(yeni_kayit)
-    st.success(f"✅ {isim} sisteme başarıyla kaydedildi.")
+    verileri_kaydet(st.session_state.kayitlar) # DOSYAYA YAZ
+    st.success(f"✅ {isim} kalıcı olarak kaydedildi.")
 
 # Ana Ekran Sekmeleri
 tab1, tab2 = st.tabs(["📊 İşlem Takibi", "📜 Sözleşme Hazırlama"])
@@ -48,9 +71,8 @@ with tab1:
         df = pd.DataFrame(st.session_state.kayitlar)
         st.dataframe(df, use_container_width=True)
         
-        # Excel Dostu İndirme
         csv = df.to_csv(index=False, sep=';').encode('utf-8-sig')
-        st.download_button("Excel Listesini İndir", data=csv, file_name='gunluk_emlak_ozeti.csv', mime='text/csv')
+        st.download_button("Excel Listesini İndir", data=csv, file_name='emlak_kayitlari.csv', mime='text/csv')
     else:
         st.info("Henüz bir işlem kaydı bulunmuyor.")
 
@@ -73,6 +95,5 @@ with tab2:
         ____________________                 ____________________
         """
         st.text_area("Kopyalamaya Hazır Metin:", sozlesme_metni, height=350)
-        st.info("💡 Bu metni kopyalayıp dijital imza uygulamasına veya Word dosyasına yapıştırabilirsiniz.")
     else:
         st.warning("⚠️ Sözleşme oluşturmak için lütfen sol taraftan müşteri adı girin.")
