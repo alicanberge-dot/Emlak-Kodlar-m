@@ -108,22 +108,7 @@ with tab2:
                              format_func=lambda x: f"{st.session_state.kayitlar[x]['Müşteri']}")
         m = st.session_state.kayitlar[secim]
         
-        def pro_pdf(data):
-            pdf = FPDF()
-            pdf.add_font("Roboto", style="", fname="Roboto_Condensed-Light.ttf")
-            pdf.add_font("Roboto", style="B", fname="Roboto_Condensed-Bold.ttf")
-            pdf.add_page()
-            pdf.rect(5, 5, 200, 287)
-            pdf.set_font("Roboto", "B", 18)
-            pdf.cell(0, 15, "TAŞINMAZ GÖSTERME VE YETKİ BELGESİ", align='C', ln=True)
-            pdf.set_font("Roboto", "", 11)
-            pdf.ln(10)
-            text = f"İşbu belge, danışman {st.session_state.user.upper()} ile müşteri {data['Müşteri']} arasında düzenlenmiştir."
-            pdf.multi_cell(0, 10, text)
-            pdf.ln(20)
-            pdf.cell(90, 10, "MÜŞTERİ İMZA", align='L')
-            pdf.cell(0, 10, "DANIŞMAN İMZA", align='R')
-            return pdf.output()
+        
 
         if st.button("🚀 Profesyonel Sözleşmeyi Oluştur"):
             raw_pdf = pro_pdf(m)
@@ -131,4 +116,57 @@ with tab2:
 
 if st.sidebar.button("🚪 Çıkış Yap"):
     st.session_state.user = None
-    st.rerun()
+    st.rerun()def pro_pdf(data):
+    pdf = FPDF()
+    pdf.add_font("Roboto", style="", fname="Roboto_Condensed-Light.ttf")
+    pdf.add_font("Roboto", style="B", fname="Roboto_Condensed-Bold.ttf")
+    pdf.add_page()
+    
+    # --- ESTETİK ÇERÇEVE VE BAŞLIK ---
+    pdf.set_draw_color(40, 40, 40)
+    pdf.rect(5, 5, 200, 287) # Dış çerçeve
+    
+    pdf.set_font("Roboto", "B", 18)
+    pdf.cell(0, 15, "TAŞINMAZ GÖSTERME VE YETKİ BELGESİ", align='C', ln=True)
+    pdf.set_font("Roboto", "", 9)
+    pdf.cell(0, 5, "Bu belge 6098 Sayılı Türk Borçlar Kanunu ve ilgili yönetmeliklere uygun olarak tanzim edilmiştir.", align='C', ln=True)
+    pdf.ln(10)
+
+    # --- 1. TARAFLAR BÖLÜMÜ ---
+    pdf.set_fill_color(240, 240, 240)
+    pdf.set_font("Roboto", "B", 12)
+    pdf.cell(0, 10, " 1. TARAFLAR", ln=True, fill=True)
+    pdf.set_font("Roboto", "", 10)
+    pdf.multi_cell(0, 7, f"DANIŞMAN: {st.session_state.user.upper()} \n"
+                         f"MÜŞTERİ: {data['Müşteri']} \n"
+                         f"TARİH: {data['Tarih']}")
+    pdf.ln(5)
+
+    # --- 2. SÖZLEŞMENİN KONUSU VE ŞARTLAR ---
+    pdf.set_font("Roboto", "B", 12)
+    pdf.cell(0, 10, " 2. HİZMET ŞARTLARI VE TAAHHÜTLER", ln=True, fill=True)
+    pdf.set_font("Roboto", "", 10)
+    
+    maddeler = (
+        "a) Danışman, müşteriye aşağıda belirtilen şartlar dahilinde taşınmazı göstermeyi kabul eder.\n"
+        f"b) Müşteri, gösterilen taşınmazın satın alınması veya kiralanması durumunda bedel ({data['Tutar']}) "
+        "üzerinden %2 + KDV oranında hizmet bedelini ödemeyi kabul ve taahhüt eder.\n"
+        "c) Müşteri, danışman tarafından gösterilen taşınmazı, danışmanı devre dışı bırakarak mal sahibi ile "
+        "doğrudan veya üçüncü kişiler aracılığıyla işlem yapması durumunda, hizmet bedelinin %100 fazlasını "
+        "cezai şart olarak ödemeyi kabul eder.\n"
+        "d) İşbu sözleşme imza tarihinden itibaren 1 (bir) yıl süreyle geçerlidir."
+    )
+    pdf.multi_cell(0, 7, maddeler)
+
+    # --- İMZA ALANI ---
+    pdf.ln(30)
+    pdf.set_font("Roboto", "B", 11)
+    pdf.cell(90, 10, "MÜŞTERİ (AD SOYAD / İMZA)", align='L')
+    pdf.cell(0, 10, "DANIŞMAN (KAŞE / İMZA)", align='R')
+    
+    # Alt Bilgi
+    pdf.set_y(-20)
+    pdf.set_font("Roboto", "", 8)
+    pdf.cell(0, 10, f"Bu belge {st.session_state.user.upper()} Portföy Yönetimi aracılığıyla dijital olarak üretilmiştir.", align='C')
+    
+    return pdf.output()
