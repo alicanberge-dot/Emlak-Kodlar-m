@@ -8,23 +8,61 @@ from fpdf import FPDF
 # Sayfa Ayarları
 st.set_page_config(page_title="Emlak Pro Asistan", page_icon="🏢", layout="wide")
 
-# --- KULLANICI GİRİŞ SİSTEMİ ---
+# --- KULLANICI & ŞİFRE YÖNETİMİ ---
+USERS_FILE = "kullanicilar.json"
+
+def kullanicilari_yukle():
+    if os.path.exists(USERS_FILE):
+        with open(USERS_FILE, "r", encoding="utf-8") as f:
+            return json.load(f)
+    return {}
+
+def kullanici_kaydet(username, password):
+    kullanicilar = kullanicilari_yukle()
+    kullanicilar[username] = password
+    with open(USERS_FILE, "w", encoding="utf-8") as f:
+        json.dump(kullanicilar, f, ensure_ascii=False, indent=4)
+
+# Uygulama başladığında kullanıcıyı kontrol et
 if 'user' not in st.session_state:
     st.session_state.user = None
 
 if st.session_state.user is None:
     st.title("🔐 Emlak Paneli Girişi")
-    user_input = st.text_input("Kullanıcı Adınızı Giriniz (Örn: adiniz_soyadiniz):").lower().strip()
-    if st.button("Sisteme Gir"):
-        if user_input:
-            st.session_state.user = user_input
-            st.rerun()
-        else:
-            st.warning("Lütfen bir kullanıcı adı belirleyin.")
-    st.stop() # Giriş yapılana kadar alt tarafı çalıştırma
+    
+    tab_giris, tab_kayit = st.tabs(["Giriş Yap", "Yeni Hesap Oluştur"])
+    
+    with tab_giris:
+        k_adi = st.text_input("Kullanıcı Adı:", key="login_user").lower().strip()
+        sifre = st.text_input("Şifre:", type="password", key="login_pass")
+        
+        if st.button("Sisteme Gir"):
+            mevcut_kullanicilar = kullanicilari_yukle()
+            if k_adi in mevcut_kullanicilar and mevcut_kullanicilar[k_adi] == sifre:
+                st.session_state.user = k_adi
+                st.rerun()
+            else:
+                st.error("❌ Kullanıcı adı veya şifre hatalı!")
 
-# Her kullanıcıya özel dosya ismi
+    with tab_kayit:
+        yeni_k_adi = st.text_input("Yeni Kullanıcı Adı:", key="reg_user").lower().strip()
+        yeni_sifre = st.text_input("Yeni Şifre Belirleyin:", type="password", key="reg_pass")
+        
+        if st.button("Kayıt Ol ve Kullanıcı Oluştur"):
+            if yeni_k_adi and yeni_sifre:
+                mevcutlar = kullanicilari_yukle()
+                if yeni_k_adi in mevcutlar:
+                    st.warning("⚠️ Bu kullanıcı adı zaten alınmış!")
+                else:
+                    kullanici_kaydet(yeni_k_adi, yeni_sifre)
+                    st.success("✅ Hesabınız oluşturuldu! Şimdi 'Giriş Yap' sekmesinden girebilirsiniz.")
+            else:
+                st.warning("Lütfen tüm alanları doldurun.")
+    st.stop()
+
+# Giriş yapıldıktan sonraki veritabanı dosyası
 DB_FILE = f"db_{st.session_state.user}.json"
+# ... (Kodun geri kalanı - verileri_yukle, verileri_kaydet vb. aynı kalacak)
 
 def verileri_yukle():
     if os.path.exists(DB_FILE):
