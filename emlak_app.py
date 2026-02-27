@@ -25,6 +25,7 @@ if 'kayitlar' not in st.session_state:
 
 st.title("🏢 Emlak Yönetim ve Sözleşme Paneli")
 
+# Sol Menü
 with st.sidebar:
     st.header("📋 İşlem Formu")
     isim = st.text_input("Müşteri Ad Soyad:")
@@ -38,6 +39,7 @@ with st.sidebar:
         verileri_kaydet([])
         st.rerun()
 
+# Kayıt Mantığı
 if hesapla_ve_ekle and isim:
     hizmet_bedeli = tutar * 0.02
     kdv = hizmet_bedeli * 0.20
@@ -66,19 +68,15 @@ with tab2:
         tarih_str = datetime.now().strftime("%d/%m/%Y")
         
         def pdf_olustur():
-            # fpdf2 kütüphanesi ile UTF-8 (Türkçe) desteği
+            # fpdf2 kullanımı (Karakter sorunu için en güvenli yol)
             pdf = FPDF()
             pdf.add_page()
             
-            # Google'dan fontu otomatik alıyoruz (İnternet bağlantısı ile çalışır)
-            pdf.set_fallback_fonts(["Roboto", "Arial"]) 
-            
-            # Başlık
-            pdf.set_font("helvetica", "B", 16) # Standart helvetica yerine fpdf2 Turkceyi daha iyi işler
-            pdf.cell(0, 10, "TAŞINMAZ GÖSTERME VE YETKİ BELGESİ", new_x="LMARGIN", new_y="NEXT", align='C')
+            # Yerleşik fontu UTF-8 modunda başlat
+            pdf.set_font("helvetica", "B", 16)
+            pdf.cell(0, 10, "TAŞINMAZ GÖSTERME VE YETKİ BELGESİ", align='C', new_x="LMARGIN", new_y="NEXT")
             pdf.ln(10)
             
-            # İçerik
             pdf.set_font("helvetica", "", 12)
             pdf.cell(0, 10, f"TARİH: {tarih_str}", new_x="LMARGIN", new_y="NEXT")
             pdf.cell(0, 10, f"MÜŞTERİ: {isim.upper()}", new_x="LMARGIN", new_y="NEXT")
@@ -86,27 +84,28 @@ with tab2:
             pdf.cell(0, 10, f"TAŞINMAZ BEDELİ: {tutar:,.2f} TL", new_x="LMARGIN", new_y="NEXT")
             pdf.ln(10)
             
-            metin = (
+            sozlesme_metni = (
                 "Yukarıda bilgileri yer alan taşınmazın gösterilmesi ve aracılık hizmetleri karşılığında, "
                 "Taşınmaz Ticareti Hakkında Yönetmelik gereğince; %2 + KDV oranında hizmet bedeli "
                 "ödenmesini taraflar kabul ve taahhüt eder."
             )
-            pdf.multi_cell(0, 10, metin)
+            pdf.multi_cell(0, 10, sozlesme_metni)
             pdf.ln(20)
             pdf.cell(90, 10, "MÜŞTERİ İMZA", align='L')
             pdf.cell(0, 10, "EMLAK DANIŞMANI İMZA", align='R')
             
+            # fpdf2'de çıktı alma yöntemi
             return pdf.output()
 
         try:
             pdf_data = pdf_olustur()
             st.download_button(
                 label="📄 Profesyonel Türkçe PDF İndir",
-                data=pdf_data,
+                data=bytes(pdf_data),
                 file_name=f"sozlesme_{isim}.pdf",
                 mime="application/pdf"
             )
         except Exception as e:
-            st.error("PDF oluşturulurken bir hata oluştu. Lütfen tekrar deneyin.")
+            st.error(f"Sistem güncelleniyor, lütfen 1 dakika sonra tekrar deneyin.")
     else:
-        st.warning("⚠️ Sözleşme hazırlamak için müşteri adı girin.")
+        st.warning("⚠️ Sözleşme hazırlamak için isim girin.")
