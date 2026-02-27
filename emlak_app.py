@@ -70,12 +70,12 @@ with tab2:
         def pdf_olustur():
             pdf = FPDF()
             
-            # GOOGLE FONT EKLEME (Türkçe Karakter Çözümü)
-            # İnternet üzerinden Roboto fontunu çeker, klasöre dosya atmana gerek kalmaz.
-            pdf.add_font("Roboto", style="", fname="https://github.com/google/fonts/raw/main/apache/roboto/Roboto-Regular.ttf")
-            pdf.add_font("Roboto", style="B", fname="https://github.com/google/fonts/raw/main/apache/roboto/Roboto-Bold.ttf")
+            # FONT YOLLARINI KLASÖRE GÖRE GÜNCELLEDİK
+            pdf.add_font("Roboto", style="", fname="Roboto/static/Roboto-Regular.ttf")
+            pdf.add_font("Roboto", style="B", fname="Roboto/static/Roboto-Bold.ttf")
             
             pdf.add_page()
+            # ... geri kalan kod aynı kalacak
             
             # Başlık (Roboto Bold kullanıyoruz)
             pdf.set_font("Roboto", "B", 16)
