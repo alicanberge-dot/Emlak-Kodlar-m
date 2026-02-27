@@ -34,6 +34,13 @@ if st.session_state.user is None:
                 st.session_state.user = u
                 st.rerun()
             else: st.error("Hatalı Bilgi")
+    with t2:
+        nu = st.text_input("Yeni Kayıt Adı:").lower().strip()
+        np = st.text_input("Şifre Belirle:", type="password")
+        if st.button("Hesabı Oluştur"):
+            if nu and np:
+                kullanici_kaydet(nu, np)
+                st.success("Hesap Hazır! Giriş sekmesine geçebilirsiniz.")
     st.stop()
 
 # --- VERİ TABANI ---
@@ -59,11 +66,12 @@ with tab1:
     with col_f:
         st.subheader("Yeni Portföy Ekle")
         p_ad = st.text_input("Mülk Sahibi/Başlık:")
-        p_tur = st.selectbox("Tür:", ["Daire", "Arsa", "Ticari"], key="ptur")
-        p_oda = st.selectbox("Oda Sayısı:", ["1+1", "2+1", "3+1", "4+1", "Arsa/Diğer"])
+        p_tur = st.selectbox("Tür:", ["Daire", "Arsa", "Ticari"], key="ptur_reg")
+        p_oda = st.selectbox("Oda Sayısı:", ["1+1", "2+1", "3+1", "4+1", "Arsa/Diğer"], key="poda_reg")
         p_tutar = st.number_input("Satış Bedeli (TL):", value=2000000)
         p_konum = st.text_input("Konum (İlçe/Semt):")
         if st.button("Portföyü Kaydet"):
+            # Hata düzeltme: 'Tür' anahtarını eşleştirme motoruyla uyumlu hale getirdik
             yeni = {"Mülk": p_ad, "Tür": p_tur, "Oda": p_oda, "Tutar": p_tutar, "Konum": p_konum, "Tarih": datetime.now().strftime("%d-%m-%Y")}
             st.session_state.kayitlar.append(yeni)
             with open(DB_FILE, "w", encoding="utf-8") as f: json.dump(st.session_state.kayitlar, f, ensure_ascii=False, indent=4)
@@ -80,8 +88,8 @@ with tab2:
     with col_tf:
         st.subheader("Yeni Müşteri Arayışı")
         t_ad = st.text_input("Arayan Müşteri:")
-        t_tur = st.selectbox("Aradığı Tür:", ["Daire", "Arsa", "Ticari"], key="ttur")
-        t_oda = st.selectbox("İstediği Oda:", ["1+1", "2+1", "3+1", "4+1", "Arsa/Diğer"], key="toda")
+        t_tur = st.selectbox("Aradığı Tür:", ["Daire", "Arsa", "Ticari"], key="ttur_req")
+        t_oda = st.selectbox("İstediği Oda:", ["1+1", "2+1", "3+1", "4+1", "Arsa/Diğer"], key="toda_req")
         t_max = st.number_input("Maksimum Bütçe (TL):", value=3000000)
         if st.button("Talebi Kaydet"):
             yeni_t = {"Müşteri": t_ad, "Tür": t_tur, "Oda": t_oda, "Butce": t_max}
@@ -94,31 +102,65 @@ with tab2:
         if st.session_state.talepler:
             st.dataframe(pd.DataFrame(st.session_state.talepler), use_container_width=True)
 
-# --- TAB 3: AKILLI EŞLEŞTİRME (AI ENGINE) ---
+# --- TAB 3: AKILLI EŞLEŞTİRME (HATA DÜZELTİLMİŞ) ---
 with tab3:
     st.subheader("🤖 Algoritmik Portföy-Talep Eşleşmesi")
     if not st.session_state.kayitlar or not st.session_state.talepler:
         st.info("Eşleştirme yapabilmek için hem 'Portföy' hem de 'Talep' kaydı olmalıdır.")
     else:
         bulunan_eslesme = False
-        for talep in st.session_state.talepler:
-            for portfoy in st.session_state.kayitlar:
-                # Eşleşme Mantığı: Tür aynı, Oda aynı ve Fiyat bütçeye uygunsa
-                if talep['Tür'] == portfoy['Tür'] and talep['Oda'] == portfoy['Oda'] and portfoy['Tutar'] <= talep['Butce']:
-                    st.success(f"🌟 **EŞLEŞME BULDUM!**")
-                    st.write(f"👉 **Müşteri:** {talep['Müşteri']} | **Uygun Mülk:** {portfoy['Mülk']} ({portfoy['Konum']})")
-                    st.write(f"💰 **Bütçe:** {talep['Butce']:,} TL | **Mülk Fiyatı:** {portfoy['Tutar']:,} TL")
+        for t in st.session_state.talepler:
+            for p in st.session_state.kayitlar:
+                # 'get' metodu kullanarak anahtar eksik olsa bile kodun çökmesini engelliyoruz
+                if t.get('Tür') == p.get('Tür') and t.get('Oda') == p.get('Oda') and p.get('Tutar', 0) <= t.get('Butce', 0):
+                    st.success(f"🌟 **MÜKEMMEL EŞLEŞME!**")
+                    c1, c2 = st.columns(2)
+                    c1.write(f"👤 **Arayan:** {t['Müşteri']}")
+                    c2.write(f"🏠 **Uygun Mülk:** {p['Mülk']} ({p['Konum']})")
+                    st.write(f"💰 **Bütçe Durumu:** {p['Tutar']:,} TL / {t['Butce']:,} TL")
                     st.divider()
                     bulunan_eslesme = True
         if not bulunan_eslesme:
-            st.warning("Şu an kriterleri tam uyuşan bir eşleşme bulunamadı.")
+            st.warning("Kriterleri tam uyuşan bir mülk/müşteri eşleşmesi bulunamadı.")
 
 # --- TAB 4: SÖZLEŞME & ANALİZ ---
 with tab4:
     st.subheader("📜 Elite Sözleşme & 🧮 Amortisman")
-    # (Önceki profesyonel PDF ve analiz kodlarını buraya dahil ediyoruz)
-    st.write("Buradan daha önce kaydettiğiniz mülkler için Elite PDF üretebilir ve ROI analizi yapabilirsiniz.")
-    # ... (PDF kodları buraya gelecek - Alan tasarrufu için kısa kesilmiştir)
+    if st.session_state.kayitlar:
+        s_idx = st.selectbox("İşlem Seçin:", range(len(st.session_state.kayitlar)), format_func=lambda x: f"{st.session_state.kayitlar[x]['Mülk']}")
+        m_sel = st.session_state.kayitlar[s_idx]
+        
+        tc = st.text_input("Müşteri TC/Vergi No:")
+        ap = st.text_input("Ada/Parsel Bilgisi:")
+
+        def elite_pdf(d, tc_no, ada_p):
+            pdf = FPDF()
+            pdf.add_font("Roboto", style="", fname="Roboto_Condensed-Light.ttf")
+            pdf.add_font("Roboto", style="B", fname="Roboto_Condensed-Bold.ttf")
+            pdf.add_page()
+            pdf.rect(5, 5, 200, 287)
+            pdf.set_font("Roboto", "B", 18)
+            pdf.cell(0, 15, "TAŞINMAZ YER GÖSTERME VE YETKİ BELGESİ", align='C', ln=True)
+            pdf.ln(10)
+            pdf.set_font("Roboto", "", 11)
+            pdf.multi_cell(0, 8, f"MÜŞTERİ: {d['Mülk'].upper()} \nTC: {tc_no} \nADA/PARSEL: {ada_p} \nTUTAR: {d['Tutar']:,} TL")
+            pdf.ln(10)
+            pdf.multi_cell(0, 8, "Müşteri, kendisine gösterilen bu taşınmazı satın alması durumunda %2+KDV hizmet bedeli ödemeyi ve danışmanı devre dışı bırakması halinde cezai şart ödemeyi kabul eder.")
+            pdf.ln(40)
+            pdf.cell(90, 10, "MÜŞTERİ İMZA", align='L')
+            pdf.cell(0, 10, "DANIŞMAN İMZA", align='R')
+            return pdf.output()
+
+        if st.button("🚀 Elite Sözleşme PDF İndir"):
+            pdf_out = elite_pdf(m_sel, tc, ap)
+            st.download_button("📥 Dosyayı İndir", data=bytes(pdf_out), file_name=f"Elite_Sozlesme.pdf")
+        
+        st.divider()
+        st.subheader("🧮 Yatırım Analizi")
+        k_getiri = st.number_input("Tahmini Aylık Kira (TL):", value=20000)
+        if k_getiri > 0:
+            yil = m_sel['Tutar'] / (k_getiri * 12)
+            st.metric("Amortisman Süresi", f"{yil:.1f} Yıl")
 
 if st.sidebar.button("🚪 Güvenli Çıkış"):
     st.session_state.user = None
