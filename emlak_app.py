@@ -70,13 +70,35 @@ if hesapla_ve_ekle and isim:
     st.success(f"✅ {isim} kaydedildi.")
 
 tab1, tab2 = st.tabs(["📊 İşlem Takibi", "📜 Sözleşme Hazırlama"])
-
 with tab1:
     if st.session_state.kayitlar:
         df = pd.DataFrame(st.session_state.kayitlar)
         st.dataframe(df, use_container_width=True)
+        
+        # --- SİLME BÖLÜMÜ ---
+        st.divider()
+        st.subheader("🗑️ Kayıt Yönetimi")
+        
+        # Silinecek kaydı seçmek için bir liste oluşturuyoruz
+        silinecek_index = st.selectbox(
+            "Silmek istediğiniz kaydı seçin (Sıra No):", 
+            range(len(st.session_state.kayitlar)),
+            format_func=lambda x: f"{x}: {st.session_state.kayitlar[x]['Müşteri']} - {st.session_state.kayitlar[x]['Tarih']}"
+        )
+        
+        if st.button("Seçili Kaydı Kalıcı Olarak Sil"):
+            # Listeden çıkar
+            silinen_isim = st.session_state.kayitlar[silinecek_index]['Müşteri']
+            st.session_state.kayitlar.pop(silinecek_index)
+            
+            # Güncel halini kullanıcının kendi dosyasına (db_user.json) kaydet
+            verileri_kaydet(st.session_state.kayitlar)
+            
+            st.success(f"❌ {silinen_isim} kişisine ait kayıt başarıyla silindi.")
+            st.rerun() # Sayfayı yenileyerek tabloyu güncelle
     else:
         st.info("Henüz bir kaydınız bulunmuyor.")
+
 
 with tab2:
     if isim:
