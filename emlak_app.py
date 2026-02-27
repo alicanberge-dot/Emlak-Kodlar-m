@@ -3,26 +3,23 @@ import pandas as pd
 from datetime import datetime
 import json
 import os
+from fpdf import FPDF
 
 # Sayfa Ayarları
 st.set_page_config(page_title="Emlak Pro Asistan", page_icon="🏢", layout="wide")
 
-# VERİTABANI DOSYASI AYARI
 DB_FILE = "emlak_veritabani.json"
 
-# Verileri Dosyadan Yükleme Fonksiyonu
 def verileri_yukle():
     if os.path.exists(DB_FILE):
         with open(DB_FILE, "r", encoding="utf-8") as f:
             return json.load(f)
     return []
 
-# Verileri Dosyaya Kaydetme Fonksiyonu
 def verileri_kaydet(veriler):
     with open(DB_FILE, "w", encoding="utf-8") as f:
         json.dump(veriler, f, ensure_ascii=False, indent=4)
 
-# Uygulama Hafızasını Başlat
 if 'kayitlar' not in st.session_state:
     st.session_state.kayitlar = verileri_yukle()
 
@@ -37,13 +34,12 @@ with st.sidebar:
     st.divider()
     hesapla_ve_ekle = st.button("Sisteme Kaydet ve Hesapla")
     
-    # Veritabanını Temizleme Butonu (Dikkatli Kullanım İçin)
     if st.button("🔴 Tüm Listeyi Sıfırla"):
         st.session_state.kayitlar = []
         verileri_kaydet([])
         st.rerun()
 
-# Hesaplama Mantığı
+# Hesaplama ve Kayıt
 if hesapla_ve_ekle and isim:
     hizmet_bedeli = tutar * 0.02
     kdv = hizmet_bedeli * 0.20
@@ -51,18 +47,13 @@ if hesapla_ve_ekle and isim:
     tarih = datetime.now().strftime("%d-%m-%Y %H:%M")
 
     yeni_kayit = {
-        "Tarih": tarih,
-        "Müşteri": isim,
-        "İşlem": islem_tipi,
-        "Tutar": f"{tutar:,.2f} TL",
-        "Hizmet Bedeli": f"{hizmet_bedeli:,.2f} TL",
-        "KDV Dahil": f"{toplam:,.2f} TL"
+        "Tarih": tarih, "Müşteri": isim, "İşlem": islem_tipi,
+        "Tutar": f"{tutar:,.2f} TL", "Hizmet Bedeli": f"{hizmet_bedeli:,.2f} TL", "KDV Dahil": f"{toplam:,.2f} TL"
     }
     st.session_state.kayitlar.append(yeni_kayit)
-    verileri_kaydet(st.session_state.kayitlar) # DOSYAYA YAZ
-    st.success(f"✅ {isim} kalıcı olarak kaydedildi.")
+    verileri_kaydet(st.session_state.kayitlar)
+    st.success(f"✅ {isim} kaydedildi.")
 
-# Ana Ekran Sekmeleri
 tab1, tab2 = st.tabs(["📊 İşlem Takibi", "📜 Sözleşme Hazırlama"])
 
 with tab1:
@@ -70,30 +61,41 @@ with tab1:
     if st.session_state.kayitlar:
         df = pd.DataFrame(st.session_state.kayitlar)
         st.dataframe(df, use_container_width=True)
-        
         csv = df.to_csv(index=False, sep=';').encode('utf-8-sig')
-        st.download_button("Excel Listesini İndir", data=csv, file_name='emlak_kayitlari.csv', mime='text/csv')
-    else:
-        st.info("Henüz bir işlem kaydı bulunmuyor.")
+        st.download_button("Excel Listesini İndir", data=csv, file_name='emlak_kayitlari.csv')
 
 with tab2:
-    st.subheader("Otomatik Yetki Belgesi Taslağı")
+    st.subheader("Otomatik Yetki Belgesi")
     if isim:
-        sozlesme_metni = f"""
-        TAŞINMAZ GÖSTERME VE YETKİ BELGESİ
+        tarih_str = datetime.now().strftime("%d/%m/%Y")
         
-        TARİH: {datetime.now().strftime("%d/%m/%Y")}
-        MÜŞTERİ: {isim.upper()}
-        İŞLEM TÜRÜ: {islem_tipi}
-        TAŞINMAZ BEDELİ: {tutar:,.2f} TL
-        
-        Yukarıda bilgileri yer alan taşınmazın gösterilmesi ve aracılık hizmetleri karşılığında, 
-        Taşınmaz Ticareti Hakkında Yönetmelik gereğince; %2 + KDV oranında hizmet bedeli 
-        ödenmesini taraflar kabul ve taahhüt eder.
-        
-        MÜŞTERİ İMZA:                        EMLAK DANIŞMANI İMZA:
-        ____________________                 ____________________
-        """
-        st.text_area("Kopyalamaya Hazır Metin:", sozlesme_metni, height=350)
+        # PDF Oluşturma Fonksiyonu
+        def pdf_olustur():
+            pdf = FPDF()
+            pdf.add_page()
+            # Standart font (Türkçe karakterler için latin-1 uyumlu)
+            pdf.set_font("Arial", "B", 16)
+            pdf.cell(200, 10, "TASINMAZ GOSTERME VE YETKI BELGESI", ln=True, align='C')
+            pdf.ln(10)
+            pdf.set_font("Arial", "", 12)
+            pdf.cell(200, 10, f"TARIH: {tarih_str}", ln=True)
+            pdf.cell(200, 10, f"MUSTERI: {isim.upper()}", ln=True)
+            pdf.cell(200, 10, f"ISLEM TURU: {islem_tipi}", ln=True)
+            pdf.cell(200, 10, f"TASINMAZ BEDELI: {tutar:,.2f} TL", ln=True)
+            pdf.ln(10)
+            pdf.multi_cell(0, 10, "Yukarida bilgileri yer alan tasinmazin gosterilmesi ve aracilik hizmetleri karsiliginda, Tasinmaz Ticareti Hakkinda Yonetmelik geregince; %2 + KDV oraninda hizmet bedeli odenmesini taraflar kabul ve taahhut eder.")
+            pdf.ln(20)
+            pdf.cell(100, 10, "MUSTERI IMZA", align='L')
+            pdf.cell(0, 10, "EMLAK DANISMANI IMZA", align='R')
+            return pdf.output(dest='S').encode('latin-1', 'ignore')
+
+        pdf_data = pdf_olustur()
+        st.download_button(
+            label="📄 Sözleşmeyi PDF Olarak İndir",
+            data=pdf_data,
+            file_name=f"sozlesme_{isim}.pdf",
+            mime="application/pdf"
+        )
+        st.info("💡 PDF indirmeden önce yukarıdaki butona basın. Dosya telefonunuzun 'İndirilenler' klasörüne kaydedilir.")
     else:
-        st.warning("⚠️ Sözleşme oluşturmak için lütfen sol taraftan müşteri adı girin.")
+        st.warning("⚠️ Sözleşme için isim girin.")
