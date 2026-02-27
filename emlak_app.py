@@ -102,12 +102,15 @@ with tab2:
             return pdf.output()
 
         try:
-            pdf_data = pdf_olustur()
+            pdf_output = pdf_olustur()
+            # bytearray tipini bytes tipine zorluyoruz:
+            pdf_bytes = bytes(pdf_output) 
+            
             st.download_button(
                 label="📄 Profesyonel Türkçe PDF İndir",
-                data=pdf_data, # bytes() sarmalına gerek olmayabilir, fpdf2 bunu halleder
+                data=pdf_bytes,
                 file_name=f"sozlesme_{isim}.pdf",
                 mime="application/pdf"
             )
         except Exception as e:
-            st.error(f"Hata detayı: {e}") # Buradaki hata mesajını görmek işimizi kolaylaştırır
+            st.error(f"Hata detayı: {e}")
