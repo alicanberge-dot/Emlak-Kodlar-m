@@ -68,16 +68,22 @@ with tab2:
         tarih_str = datetime.now().strftime("%d/%m/%Y")
         
         def pdf_olustur():
-            # fpdf2 kullanımı (Karakter sorunu için en güvenli yol)
             pdf = FPDF()
+            
+            # GOOGLE FONT EKLEME (Türkçe Karakter Çözümü)
+            # İnternet üzerinden Roboto fontunu çeker, klasöre dosya atmana gerek kalmaz.
+            pdf.add_font("Roboto", style="", fname="https://github.com/google/fonts/raw/main/apache/roboto/Roboto-Regular.ttf")
+            pdf.add_font("Roboto", style="B", fname="https://github.com/google/fonts/raw/main/apache/roboto/Roboto-Bold.ttf")
+            
             pdf.add_page()
             
-            # Yerleşik fontu UTF-8 modunda başlat
-            pdf.set_font("helvetica", "B", 16)
+            # Başlık (Roboto Bold kullanıyoruz)
+            pdf.set_font("Roboto", "B", 16)
             pdf.cell(0, 10, "TAŞINMAZ GÖSTERME VE YETKİ BELGESİ", align='C', new_x="LMARGIN", new_y="NEXT")
             pdf.ln(10)
             
-            pdf.set_font("helvetica", "", 12)
+            # İçerik (Roboto Regular kullanıyoruz)
+            pdf.set_font("Roboto", "", 12)
             pdf.cell(0, 10, f"TARİH: {tarih_str}", new_x="LMARGIN", new_y="NEXT")
             pdf.cell(0, 10, f"MÜŞTERİ: {isim.upper()}", new_x="LMARGIN", new_y="NEXT")
             pdf.cell(0, 10, f"İŞLEM TÜRÜ: {islem_tipi}", new_x="LMARGIN", new_y="NEXT")
@@ -94,7 +100,6 @@ with tab2:
             pdf.cell(90, 10, "MÜŞTERİ İMZA", align='L')
             pdf.cell(0, 10, "EMLAK DANIŞMANI İMZA", align='R')
             
-            # fpdf2'de çıktı alma yöntemi
             return pdf.output()
 
         try:
