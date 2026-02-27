@@ -80,19 +80,20 @@ with tab1:
     with col_f:
         st.subheader("Yeni Portföy Kaydı")
         p_sahibi = st.text_input("Mülk Sahibi:")
-        p_islem = st.radio("İşlem Türü:", ISLEM_SECENEKLERI, horizontal=True) # Yeni Satılık/Kiralık belirteci
+        p_islem = st.radio("İşlem Türü:", ISLEM_SECENEKLERI, horizontal=True)
         p_tur = st.selectbox("Mülk Türü:", TUR_SECENEKLERI)
         p_oda = st.selectbox("Oda Sayısı:", ODA_SECENEKLERI)
-        p_konum = st.text_input("Konum:")
+        p_konum = st.text_input("Konum (İlçe/Semt):")
+        p_tel = st.text_input("Sahibi Telefon:", key="p_tel_in")
         p_bic = st.number_input("Biçilen Değer (TL):", value=0, step=50000)
         p_tek = st.number_input("Teklif Edilen (TL):", value=0, step=50000)
-        p_not = st.text_area("Özel Notlar:")
+        p_not = st.text_area("Özel Notlar:", key="p_not_in")
         
-        if st.button("Kaydet", use_container_width=True):
+        if st.button("Portföyü Kaydet", use_container_width=True):
             yeni = {
                 "Mülk Sahibi": p_sahibi, "İşlem": p_islem, "Tür": p_tur, "Oda": p_oda,
-                "Konum": p_konum, "Biçilen Değer": float(p_bic), "Teklif Edilen": float(p_tek),
-                "Not": p_not, "Tarih": datetime.now().strftime("%d-%m-%Y")
+                "Konum": p_konum, "Telefon": p_tel, "Biçilen Değer": float(p_bic), 
+                "Teklif Edilen": float(p_tek), "Not": p_not, "Tarih": datetime.now().strftime("%d-%m-%Y")
             }
             st.session_state.kayitlar.append(yeni)
             veri_kaydet(DB_FILE, st.session_state.kayitlar); st.rerun()
@@ -102,17 +103,17 @@ with tab1:
         for i, p in enumerate(st.session_state.kayitlar):
             baslik = f"🏠 [{p.get('İşlem')}] {p.get('Tür')} - {p.get('Oda')} - {p.get('Konum')}"
             with st.expander(baslik):
-                st.write(f"👤 **Sahibi:** {p.get('Mülk Sahibi')}")
+                st.write(f"👤 **Mülk Sahibi:** {p.get('Mülk Sahibi')} | 📞 {p.get('Telefon')}")
                 c_edit1, c_edit2 = st.columns(2)
                 yeni_bic = c_edit1.number_input(f"Biçilen Değer", value=float(p.get('Biçilen Değer', 0)), key=f"ebic_{i}")
                 yeni_tek = c_edit2.number_input(f"Teklif Edilen", value=float(p.get('Teklif Edilen', 0)), key=f"etek_{i}")
                 
-                if st.button(f"Güncelle", key=f"upd_{i}"):
+                if st.button(f"Fiyatları Güncelle", key=f"upd_{i}"):
                     st.session_state.kayitlar[i]['Biçilen Değer'] = yeni_bic
                     st.session_state.kayitlar[i]['Teklif Edilen'] = yeni_tek
-                    veri_kaydet(DB_FILE, st.session_state.kayitlar); st.toast("Fiyat Güncellendi!")
+                    veri_kaydet(DB_FILE, st.session_state.kayitlar); st.toast("Fiyatlar güncellendi!")
                 
-                if st.button("🗑️ Sil", key=f"del_p_{i}"):
+                if st.button("🗑️ Portföyü Sil", key=f"del_p_{i}"):
                     st.session_state.kayitlar.pop(i)
                     veri_kaydet(DB_FILE, st.session_state.kayitlar); st.rerun()
 
@@ -122,17 +123,20 @@ with tab2:
     with col_tf:
         st.subheader("Yeni Müşteri Talebi")
         t_ad = st.text_input("Müşteri Ad Soyad:")
-        t_islem = st.radio("Aranan İşlem:", ISLEM_SECENEKLERI, horizontal=True) # Müşteri ne arıyor?
+        t_tel = st.text_input("Müşteri Telefon:", key="t_tel_in") # Geri geldi
+        t_mes = st.text_input("Müşteri Mesleği:", key="t_mes_in") # Geri geldi
+        t_islem = st.radio("Aranan İşlem:", ISLEM_SECENEKLERI, horizontal=True)
         t_tur = st.selectbox("İstenen Tür:", TUR_SECENEKLERI)
         t_oda = st.selectbox("İstediği Oda:", ODA_SECENEKLERI)
-        t_butce = st.number_input("Maksimum Bütçe (TL):", value=0)
-        t_not = st.text_area("Müşteri Notları:")
+        t_konum = st.text_input("Aranılan Konum (İlçe/Semt):", key="t_kon_in") # Geri geldi
+        t_butce = st.number_input("Maksimum Bütçe (TL):", value=0, step=50000)
+        t_not = st.text_area("Müşteri Notları:", key="t_not_in")
         
         if st.button("Talebi Kaydet", use_container_width=True):
             yeni_t = {
-                "Müşteri Adı": t_ad, "İşlem": t_islem, "Tür": t_tur, "Oda": t_oda,
-                "Bütçe Aralığı": float(t_butce), "Not": t_not,
-                "Tarih": datetime.now().strftime("%d-%m-%Y")
+                "Müşteri Adı": t_ad, "Telefon": t_tel, "Meslek": t_mes, "İşlem": t_islem,
+                "Tür": t_tur, "Oda": t_oda, "Konum": t_konum, "Bütçe Aralığı": float(t_butce),
+                "Not": t_not, "Tarih": datetime.now().strftime("%d-%m-%Y")
             }
             st.session_state.talepler.append(yeni_t)
             veri_kaydet(TALEPLER_FILE, st.session_state.talepler); st.rerun()
@@ -141,22 +145,26 @@ with tab2:
         st.subheader("📋 Bekleyen Müşteri Talepleri")
         for i, t in enumerate(st.session_state.talepler):
             with st.expander(f"👤 {t.get('Müşteri Adı')} - {t.get('İşlem')} {t.get('Tür')}"):
-                st.write(f"💰 Bütçe: {t.get('Bütçe Aralığı',0):,.0f} TL | 📝 {t.get('Not','')}")
+                c_t1, c_t2 = st.columns(2)
+                c_t1.write(f"📞 **Tel:** {t.get('Telefon')}")
+                c_t1.write(f"💼 **Meslek:** {t.get('Meslek')}")
+                c_t2.write(f"📍 **Aranan Konum:** {t.get('Konum')}")
+                c_t2.write(f"💰 **Bütçe:** {t.get('Bütçe Aralığı',0):,.0f} TL")
+                st.info(f"📝 **Notlar:** {t.get('Not','')}")
                 if st.button(f"🗑️ Talebi Sil", key=f"del_t_{i}"):
                     st.session_state.talepler.pop(i)
                     veri_kaydet(TALEPLER_FILE, st.session_state.talepler); st.rerun()
 
-# --- TAB 3: AKILLI EŞLEŞTİRME (İŞLEM TÜRÜ ENTEGRELİ) ---
+# --- TAB 3: AKILLI EŞLEŞTİRME (GÖRSEL VE DETAYLI) ---
 with tab3:
-    st.subheader("🤖 Detaylı Akıllı Eşleştirme")
+    st.subheader("🤖 Hibrit Akıllı Eşleştirme (Görsel Analiz)")
     if st.session_state.kayitlar and st.session_state.talepler:
         for t in st.session_state.talepler:
             for p in st.session_state.kayitlar:
-                skor = 0
-                # KRİTİK: İşlem Türü (Satılık/Kiralık) uyuşmuyorsa eşleştirme yapma
-                if t.get('İşlem') != p.get('İşlem'):
-                    continue
+                # Satılık/Kiralık uyumu zorunlu
+                if t.get('İşlem') != p.get('İislem', p.get('İşlem')): continue
                 
+                skor = 0
                 match_tur = t.get('Tür') == p.get('Tür')
                 match_oda = t.get('Oda') == p.get('Oda')
                 p_fiyat = tutar_temizle(p.get('Biçilen Değer', 0))
@@ -173,13 +181,19 @@ with tab3:
                     c1.markdown(f"**İşlem:** :green[{p.get('İşlem')}]")
                     c2.markdown(f"**Tür:** :{'green' if match_tur else 'red'}[{p.get('Tür')}]")
                     c3.markdown(f"**Oda:** :{'green' if match_oda else 'red'}[{p.get('Oda')}]")
-                    c4.markdown(f"**Fiyat:** :{'green' if match_fiyat else 'red'}[{p_fiyat:,.0f} TL]")
-                    st.write(f"🤝 **Müşteri:** {t.get('Müşteri Adı')} ↔️ **Mülk:** {p.get('Mülk Sahibi')} ({p.get('Konum')})")
+                    c4.markdown(f"**Bütçe:** :{'green' if match_fiyat else 'red'}[{p_fiyat:,.0f} TL]")
+                    
+                    st.write(f"🤝 **Müşteri:** {t.get('Müşteri Adı')} ({t.get('Telefon')}) ↔️ **Portföy:** {p.get('Mülk Sahibi')} - {p.get('Konum')}")
                     st.divider()
-    else: st.info("Veri girişi bekleniyor.")
+    else: st.info("Eşleştirme yapabilmek için veri girişi gereklidir.")
 
-# --- TAB 4: SÖZLEŞME & EXCEL ---
+# --- TAB 4: SÖZLEŞME & RAPORLAMA ---
 with tab4:
+    st.subheader("📜 Veri Yönetimi")
     if st.session_state.kayitlar:
         df_export = pd.DataFrame(st.session_state.kayitlar)
-        st.download_button("📂 Tüm Portföyü Excel Olarak İndir", data=df_export.to_csv(index=False).encode('utf-8-sig'), file_name="Portfoy.csv")
+        csv = df_export.to_csv(index=False).encode('utf-8-sig')
+        st.download_button("📂 Tüm Portföyü Excel (CSV) Olarak İndir", data=csv, file_name=f"Elite_Portfoy_{datetime.now().strftime('%Y%m%d')}.csv")
+
+if st.sidebar.button("🚪 Güvenli Çıkış"):
+    st.session_state.user = None; st.rerun()
