@@ -8,7 +8,23 @@ from fpdf import FPDF
 # Sayfa Ayarları
 st.set_page_config(page_title="Emlak Pro Asistan", page_icon="🏢", layout="wide")
 
-DB_FILE = "emlak_veritabani.json"
+# --- KULLANICI GİRİŞ SİSTEMİ ---
+if 'user' not in st.session_state:
+    st.session_state.user = None
+
+if st.session_state.user is None:
+    st.title("🔐 Emlak Paneli Girişi")
+    user_input = st.text_input("Kullanıcı Adınızı Giriniz (Örn: adiniz_soyadiniz):").lower().strip()
+    if st.button("Sisteme Gir"):
+        if user_input:
+            st.session_state.user = user_input
+            st.rerun()
+        else:
+            st.warning("Lütfen bir kullanıcı adı belirleyin.")
+    st.stop() # Giriş yapılana kadar alt tarafı çalıştırma
+
+# Her kullanıcıya özel dosya ismi
+DB_FILE = f"db_{st.session_state.user}.json"
 
 def verileri_yukle():
     if os.path.exists(DB_FILE):
@@ -23,9 +39,9 @@ def verileri_kaydet(veriler):
 if 'kayitlar' not in st.session_state:
     st.session_state.kayitlar = verileri_yukle()
 
-st.title("🏢 Emlak Yönetim ve Sözleşme Paneli")
+# --- ANA PANEL ---
+st.title(f"🏢 Emlak Yönetim Paneli - Hoş geldin, {st.session_state.user.capitalize()}")
 
-# Sol Menü
 with st.sidebar:
     st.header("📋 İşlem Formu")
     isim = st.text_input("Müşteri Ad Soyad:")
@@ -34,12 +50,11 @@ with st.sidebar:
     st.divider()
     hesapla_ve_ekle = st.button("Sisteme Kaydet ve Hesapla")
     
-    if st.button("🔴 Tüm Listeyi Sıfırla"):
+    if st.button("🚪 Çıkış Yap"):
+        st.session_state.user = None
         st.session_state.kayitlar = []
-        verileri_kaydet([])
         st.rerun()
 
-# Kayıt Mantığı
 if hesapla_ve_ekle and isim:
     hizmet_bedeli = tutar * 0.02
     kdv = hizmet_bedeli * 0.20
@@ -60,8 +75,8 @@ with tab1:
     if st.session_state.kayitlar:
         df = pd.DataFrame(st.session_state.kayitlar)
         st.dataframe(df, use_container_width=True)
-        csv = df.to_csv(index=False, sep=';').encode('utf-8-sig')
-        st.download_button("Excel Listesini İndir", data=csv, file_name='emlak_kayitlari.csv')
+    else:
+        st.info("Henüz bir kaydınız bulunmuyor.")
 
 with tab2:
     if isim:
@@ -69,48 +84,27 @@ with tab2:
         
         def pdf_olustur():
             pdf = FPDF()
-            
-            # Senin listendeki dosya isimlerine göre tam eşleşme:
+            # Senin sistemindeki font isimleriyle eşleştirdik:
             pdf.add_font("Roboto", style="", fname="Roboto_Condensed-Light.ttf")
             pdf.add_font("Roboto", style="B", fname="Roboto_Condensed-Bold.ttf")
-            
             pdf.add_page()
             
-            # Başlık (Bold olanı kullanıyoruz)
             pdf.set_font("Roboto", "B", 16)
             pdf.cell(0, 10, "TAŞINMAZ GÖSTERME VE YETKİ BELGESİ", align='C', new_x="LMARGIN", new_y="NEXT")
             pdf.ln(10)
             
-            # İçerik (Light olanı kullanıyoruz, çok şık durur)
             pdf.set_font("Roboto", "", 12)
             pdf.cell(0, 10, f"TARİH: {tarih_str}", new_x="LMARGIN", new_y="NEXT")
             pdf.cell(0, 10, f"MÜŞTERİ: {isim.upper()}", new_x="LMARGIN", new_y="NEXT")
-            pdf.cell(0, 10, f"İŞLEM TÜRÜ: {islem_tipi}", new_x="LMARGIN", new_y="NEXT")
-            pdf.cell(0, 10, f"TAŞINMAZ BEDELİ: {tutar:,.2f} TL", new_x="LMARGIN", new_y="NEXT")
+            pdf.cell(0, 10, f"DANIŞMAN: {st.session_state.user.upper()}", new_x="LMARGIN", new_y="NEXT")
             pdf.ln(10)
             
-            metin = (
-                "Yukarıda bilgileri yer alan taşınmazın gösterilmesi ve aracılık hizmetleri karşılığında, "
-                "Taşınmaz Ticareti Hakkında Yönetmelik gereğince; %2 + KDV oranında hizmet bedeli "
-                "ödenmesini taraflar kabul ve taahhüt eder."
-            )
+            metin = "Bu belge taşınmaz ticareti yönetmeliği uyarınca düzenlenmiştir..."
             pdf.multi_cell(0, 10, metin)
-            pdf.ln(20)
-            pdf.cell(90, 10, "MÜŞTERİ İMZA", align='L')
-            pdf.cell(0, 10, "EMLAK DANIŞMANI İMZA", align='R')
-            
             return pdf.output()
 
         try:
-            pdf_output = pdf_olustur()
-            # bytearray tipini bytes tipine zorluyoruz:
-            pdf_bytes = bytes(pdf_output) 
-            
-            st.download_button(
-                label="📄 Profesyonel Türkçe PDF İndir",
-                data=pdf_bytes,
-                file_name=f"sozlesme_{isim}.pdf",
-                mime="application/pdf"
-            )
+            pdf_out = pdf_olustur()
+            st.download_button("📄 PDF İndir", data=bytes(pdf_out), file_name=f"sozlesme_{isim}.pdf")
         except Exception as e:
-            st.error(f"Hata detayı: {e}")
+            st.error(f"Hata: {e}")
