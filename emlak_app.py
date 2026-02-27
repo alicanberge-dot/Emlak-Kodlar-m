@@ -67,7 +67,7 @@ with tab2:
                              range(len(st.session_state.kayitlar)),
                              format_func=lambda x: f"{st.session_state.kayitlar[x]['Müşteri']} - {st.session_state.kayitlar[x]['Tarih']}")
         
-        mwith tab1:
+        with tab1:
     col_form, col_list = st.columns([1, 2])
     with col_form:
         st.subheader("Yeni İşlem Kaydı")
