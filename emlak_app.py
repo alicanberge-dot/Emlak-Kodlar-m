@@ -70,9 +70,9 @@ with tab2:
         def pdf_olustur():
             pdf = FPDF()
             
-            # FONT YOLLARINI KLASÖRE GÖRE GÜNCELLEDİK
-            pdf.add_font("Roboto", style="", fname="Roboto/static/Roboto-Regular.ttf")
-            pdf.add_font("Roboto", style="B", fname="Roboto/static/Roboto-Bold.ttf")
+            # Fontlar artık ana dizinde olduğu için yol en sade haliyle:
+            pdf.add_font("Roboto", style="", fname="Roboto-Regular.ttf")
+            pdf.add_font("Roboto", style="B", fname="Roboto-Bold.ttf")
             
             pdf.add_page()
             # ... geri kalan kod aynı kalacak
