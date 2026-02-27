@@ -23,21 +23,12 @@ def verileri_kaydet(veriler):
 if 'kayitlar' not in st.session_state:
     st.session_state.kayitlar = verileri_yukle()
 
-# TÜRKÇE KARAKTER TEMİZLEME FONKSİYONU (HATA ÖNLEYİCİ)
-def tr_to_en(text):
-    search = "çğışüöÇĞİŞÜÖ"
-    replace = "cgisuocGISUO"
-    for s, r in zip(search, replace):
-        text = text.replace(s, r)
-    return text
-
 st.title("🏢 Emlak Yönetim ve Sözleşme Paneli")
 
-# Sol Menü
 with st.sidebar:
     st.header("📋 İşlem Formu")
     isim = st.text_input("Müşteri Ad Soyad:")
-    islem_tipi = st.selectbox("İşlem Türü:", ["Konut Satis", "Ticari Satis", "Kiralama"])
+    islem_tipi = st.selectbox("İşlem Türü:", ["Konut Satışı", "Ticari Satış", "Kiralama"])
     tutar = st.number_input("İşlem Bedeli (TL):", min_value=0, value=2000000)
     st.divider()
     hesapla_ve_ekle = st.button("Sisteme Kaydet ve Hesapla")
@@ -47,7 +38,6 @@ with st.sidebar:
         verileri_kaydet([])
         st.rerun()
 
-# Hesaplama ve Kayıt
 if hesapla_ve_ekle and isim:
     hizmet_bedeli = tutar * 0.02
     kdv = hizmet_bedeli * 0.20
@@ -65,7 +55,6 @@ if hesapla_ve_ekle and isim:
 tab1, tab2 = st.tabs(["📊 İşlem Takibi", "📜 Sözleşme Hazırlama"])
 
 with tab1:
-    st.subheader("Günlük İşlem Listesi")
     if st.session_state.kayitlar:
         df = pd.DataFrame(st.session_state.kayitlar)
         st.dataframe(df, use_container_width=True)
@@ -73,39 +62,51 @@ with tab1:
         st.download_button("Excel Listesini İndir", data=csv, file_name='emlak_kayitlari.csv')
 
 with tab2:
-    st.subheader("Otomatik Yetki Belgesi")
     if isim:
         tarih_str = datetime.now().strftime("%d/%m/%Y")
         
         def pdf_olustur():
+            # fpdf2 kütüphanesi ile UTF-8 (Türkçe) desteği
             pdf = FPDF()
             pdf.add_page()
-            pdf.set_font("Arial", "B", 16)
-            pdf.cell(200, 10, "TASINMAZ GOSTERME VE YETKI BELGESI", ln=True, align='C')
+            
+            # Google'dan fontu otomatik alıyoruz (İnternet bağlantısı ile çalışır)
+            pdf.set_fallback_fonts(["Roboto", "Arial"]) 
+            
+            # Başlık
+            pdf.set_font("helvetica", "B", 16) # Standart helvetica yerine fpdf2 Turkceyi daha iyi işler
+            pdf.cell(0, 10, "TAŞINMAZ GÖSTERME VE YETKİ BELGESİ", new_x="LMARGIN", new_y="NEXT", align='C')
             pdf.ln(10)
-            pdf.set_font("Arial", "", 12)
-            # Metinleri Türkçe karakterlerden arındırıyoruz
-            pdf.cell(200, 10, tr_to_en(f"TARIH: {tarih_str}"), ln=True)
-            pdf.cell(200, 10, tr_to_en(f"MUSTERI: {isim.upper()}"), ln=True)
-            pdf.cell(200, 10, tr_to_en(f"ISLEM TURU: {islem_tipi}"), ln=True)
-            pdf.cell(200, 10, f"TASINMAZ BEDELI: {tutar:,.2f} TL", ln=True)
+            
+            # İçerik
+            pdf.set_font("helvetica", "", 12)
+            pdf.cell(0, 10, f"TARİH: {tarih_str}", new_x="LMARGIN", new_y="NEXT")
+            pdf.cell(0, 10, f"MÜŞTERİ: {isim.upper()}", new_x="LMARGIN", new_y="NEXT")
+            pdf.cell(0, 10, f"İŞLEM TÜRÜ: {islem_tipi}", new_x="LMARGIN", new_y="NEXT")
+            pdf.cell(0, 10, f"TAŞINMAZ BEDELİ: {tutar:,.2f} TL", new_x="LMARGIN", new_y="NEXT")
             pdf.ln(10)
-            mesaj = "Yukarida bilgileri yer alan tasinmazin gosterilmesi ve aracilik hizmetleri karsiliginda, Tasinmaz Ticareti Hakkinda Yonetmelik geregince; %2 + KDV oraninda hizmet bedeli odenmesini taraflar kabul ve taahhut eder."
-            pdf.multi_cell(0, 10, tr_to_en(mesaj))
+            
+            metin = (
+                "Yukarıda bilgileri yer alan taşınmazın gösterilmesi ve aracılık hizmetleri karşılığında, "
+                "Taşınmaz Ticareti Hakkında Yönetmelik gereğince; %2 + KDV oranında hizmet bedeli "
+                "ödenmesini taraflar kabul ve taahhüt eder."
+            )
+            pdf.multi_cell(0, 10, metin)
             pdf.ln(20)
-            pdf.cell(100, 10, "MUSTERI IMZA", align='L')
-            pdf.cell(0, 10, "EMLAK DANISMANI IMZA", align='R')
-            return pdf.output(dest='S').encode('latin-1')
+            pdf.cell(90, 10, "MÜŞTERİ İMZA", align='L')
+            pdf.cell(0, 10, "EMLAK DANIŞMANI İMZA", align='R')
+            
+            return pdf.output()
 
         try:
             pdf_data = pdf_olustur()
             st.download_button(
-                label="📄 Sözleşmeyi PDF Olarak İndir",
+                label="📄 Profesyonel Türkçe PDF İndir",
                 data=pdf_data,
-                file_name=f"sozlesme_{tr_to_en(isim)}.pdf",
+                file_name=f"sozlesme_{isim}.pdf",
                 mime="application/pdf"
             )
         except Exception as e:
-            st.error(f"PDF oluşturulurken bir hata oluştu. Lütfen müşteri isminde özel karakter kullanmadığınızdan emin olun.")
+            st.error("PDF oluşturulurken bir hata oluştu. Lütfen tekrar deneyin.")
     else:
-        st.warning("⚠️ Sözleşme için isim girin.")
+        st.warning("⚠️ Sözleşme hazırlamak için müşteri adı girin.")
